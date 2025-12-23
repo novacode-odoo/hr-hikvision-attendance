@@ -22,6 +22,18 @@
             <field name="interval_type">minutes</field>
             <field name="active" eval="True"/>
         </record>
+
+        <!-- Ta'til holatini sinxronlash (har kuni soat 02:00 da) -->
+        <record id="ir_cron_sync_leave_status" model="ir.cron">
+            <field name="name">Hikvision: Ta'til holatini sinxronlash</field>
+            <field name="model_id" ref="model_hikvision_device"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_sync_leave_status()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="nextcall">2025-12-22 02:00:00</field>
+            <field name="active" eval="True"/>
+        </record>
     </data>
 </odoo>
 

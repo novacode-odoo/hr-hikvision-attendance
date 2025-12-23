@@ -8,7 +8,7 @@
         It allows managing devices and fetching attendance logs.
     """,
     'author': 'NovaCode',
-    'depends': ['base', 'hr', 'hr_attendance'],
+    'depends': ['base', 'hr', 'hr_attendance', 'hr_holidays'],
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',

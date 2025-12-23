@@ -231,10 +231,10 @@ class HikvisionDevice(models.Model):
         try:
             self._make_request('GET', 'System/deviceInfo')
             self.state = 'confirmed'
-            return self._notify('Success', 'Connection successful!')
+            return self._notify('Muvaffaqiyatli', 'Qurilmaga ulanish muvaffaqiyatli!')
         except Exception as e:
             self.state = 'error'
-            return self._notify('Connection Failed', str(e), 'danger', sticky=True)
+            return self._notify('Ulanish xatosi', str(e), 'danger', sticky=True)
 
     # =====================================================
     # LOG FETCHING METHODS
@@ -440,7 +440,7 @@ class HikvisionDevice(models.Model):
                 try:
                     data = response.json()
                 except Exception:
-                    return self._notify('JSON Xato', f'Response JSON emas: {response.text[:200]}', 'danger', sticky=True)
+                    return self._notify('JSON xatosi', f'Javob JSON formatida emas: {response.text[:200]}', 'danger', sticky=True)
                 
                 # Total matches ni olish
                 if total_matches is None:
@@ -474,7 +474,7 @@ class HikvisionDevice(models.Model):
                         break
                 else:
                     if search_position == 0:
-                        return self._notify('Log topilmadi', f'Qurilma: {self.name}', 'warning')
+                        return self._notify('Log topilmadi', f'Bugun uchun loglar mavjud emas. Qurilma: {self.name}', 'warning')
                     break
             
             # Last fetch vaqtini yangilash
@@ -482,12 +482,12 @@ class HikvisionDevice(models.Model):
             
             _logger.info(f"Hikvision [{self.name}]: Fetch complete. Total: {total_matches}, Fetched: {total_fetched}, Created: {created_count}, Skipped: {skipped_count}")
             
-            message = f"Jami: {total_matches}, Olingan: {total_fetched}, Yaratildi: {created_count}, O'tkazib yuborildi: {skipped_count}"
+            message = f"Jami loglar: {total_matches} ta, Olingan: {total_fetched} ta, Yaratildi: {created_count} ta, O'tkazib yuborildi: {skipped_count} ta"
             notif_type = 'success' if error_count == 0 else 'warning'
-            return self._notify(f'Loglar yuklandi ({self.name})', message, notif_type)
+            return self._notify(f'Loglar muvaffaqiyatli yuklandi ({self.name})', message, notif_type)
             
         except Exception as e:
-            return self._notify('Xato', str(e), 'danger', sticky=True)
+            return self._notify('Loglarni olishda xato', str(e), 'danger', sticky=True)
 
     # =====================================================
     # ATTENDANCE PROCESSING
@@ -1012,3 +1012,269 @@ class HikvisionDevice(models.Model):
             _logger.info(f"Auto-close: {employee.name} uchun default {DEFAULT_WORK_END_TIME} ishlatilmoqda")
         
         return expected_end
+
+    # =====================================================
+    # LEAVE SYNC METHODS
+    # =====================================================
+    
+    def _disable_user_on_device(self, employee):
+        """
+        Xodimni qurilmada vaqtincha bloklash (ta'til uchun).
+        
+        Args:
+            employee: hr.employee record
+        
+        Raises:
+            Exception: API xatosi bo'lganda
+        """
+        self.ensure_one()
+        
+        if not employee.barcode:
+            raise Exception(f"Xodimda barcode mavjud emas: {employee.name}")
+        
+        user_data = {
+            "UserInfo": {
+                "employeeNo": str(employee.barcode),
+                "Valid": {
+                    "enable": False
+                }
+            }
+        }
+        
+        self._make_request('PUT', 'AccessControl/UserInfo/Modify?format=json', 
+                          data=json.dumps(user_data))
+        _logger.info(f"Hikvision [{self.name}]: {employee.name} bloklandi (barcode: {employee.barcode})")
+    
+    def _enable_user_on_device(self, employee):
+        """
+        Xodimni qurilmada qayta yoqish (ta'til tugagach).
+        
+        Args:
+            employee: hr.employee record
+        
+        Raises:
+            Exception: API xatosi bo'lganda
+        """
+        self.ensure_one()
+        
+        if not employee.barcode:
+            raise Exception(f"Xodimda barcode mavjud emas: {employee.name}")
+        
+        user_data = {
+            "UserInfo": {
+                "employeeNo": str(employee.barcode),
+                "Valid": {
+                    "enable": True,
+                    "beginTime": "2020-01-01T00:00:00",
+                    "endTime": "2030-12-31T23:59:59",
+                    "timeType": "local"
+                }
+            }
+        }
+        
+        self._make_request('PUT', 'AccessControl/UserInfo/Modify?format=json', 
+                          data=json.dumps(user_data))
+        _logger.info(f"Hikvision [{self.name}]: {employee.name} yoqildi (barcode: {employee.barcode})")
+    
+    @api.model
+    def _cron_sync_leave_status(self):
+        """
+        Kunlik cron job: Ta'til, davlat bayrami va dam olish kuniga ko'ra 
+        xodimlarni qurilmada bloklash/yoqish.
+        
+        Prioritet tartibi:
+        1. Shaxsiy ta'til (hr.leave)
+        2. Davlat bayrami (resource.calendar.leaves - global)
+        3. Dam olish kuni (resource.calendar - haftalik jadval)
+        """
+        today = fields.Date.today()
+        weekday = today.weekday()  # 0=Dushanba, 6=Yakshanba
+        
+        _logger.info(f"Hikvision: Kirish huquqi sinxronizatsiyasi boshlandi ({today}, hafta kuni: {weekday})")
+        
+        # 1. Barcode mavjud barcha faol xodimlar (bitta query)
+        employees = self.env['hr.employee'].search([
+            ('barcode', '!=', False),
+            ('active', '=', True)
+        ])
+        
+        if not employees:
+            _logger.info("Hikvision: Barcode mavjud xodimlar topilmadi")
+            return
+        
+        # 2. Bugun TO'LIQ KUNLIK ta'tilda bo'lgan xodimlar ID larini olish
+        # Yarim kunlik (half day) va soatlik ta'tillar bloklanmaydi
+        active_leaves = self.env['hr.leave'].search([
+            ('state', '=', 'validate'),
+            ('date_from', '<=', today),
+            ('date_to', '>=', today),
+            ('request_unit_half', '=', False),   # Yarim kunlik emas
+            ('request_unit_hours', '=', False),  # Soatlik emas
+        ])
+        employees_on_leave_ids = set(active_leaves.mapped('employee_id').ids)
+        
+        # 3. Bugun DAVLAT BAYRAMI bormi? (global - resource_id bo'sh)
+        today_datetime = datetime.combine(today, datetime.min.time())
+        public_holidays = self.env['resource.calendar.leaves'].search([
+            ('date_from', '<=', today_datetime),
+            ('date_to', '>=', today_datetime),
+            ('resource_id', '=', False),  # Global bayram (barcha uchun)
+        ])
+        is_public_holiday = bool(public_holidays)
+        if is_public_holiday:
+            holiday_name = public_holidays[0].name
+            _logger.info(f"Hikvision: Bugun davlat bayrami - {holiday_name}")
+        
+        # 4. Xodimlarni bloklash/yoqish ro'yxatlarini tayyorlash
+        to_block = []  # Bloklanishi kerak bo'lgan xodimlar
+        to_enable = []  # Yoqilishi kerak bo'lgan xodimlar
+        
+        for emp in employees:
+            should_block = False
+            reason = ""
+            
+            # Prioritet 1: Shaxsiy ta'til
+            if emp.id in employees_on_leave_ids:
+                should_block = True
+                reason = "ta'til"
+            
+            # Prioritet 2: Davlat bayrami
+            elif is_public_holiday:
+                should_block = True
+                reason = f"davlat bayrami ({holiday_name})"
+            
+            # Prioritet 3: Dam olish kuni
+            elif not self._is_working_day(emp, weekday):
+                should_block = True
+                reason = "dam olish kuni"
+            
+            if should_block:
+                to_block.append((emp, reason))
+            else:
+                to_enable.append(emp)
+        
+        # 4. Qurilmalarda sinxronlash (batch processing)
+        devices = self.search([('state', '=', 'confirmed')])
+        
+        if not devices:
+            _logger.warning("Hikvision: Tasdiqlangan qurilmalar topilmadi")
+            return
+        
+        disabled_count = 0
+        enabled_count = 0
+        error_count = 0
+        
+        for device in devices:
+            # Bloklash
+            for emp, reason in to_block:
+                try:
+                    device._disable_user_on_device(emp)
+                    disabled_count += 1
+                    _logger.debug(f"Hikvision: {emp.name} bloklandi ({reason})")
+                except Exception as e:
+                    _logger.error(f"Hikvision: {emp.name} bloklashda xato: {str(e)}")
+                    error_count += 1
+            
+            # Yoqish
+            for emp in to_enable:
+                try:
+                    device._enable_user_on_device(emp)
+                    enabled_count += 1
+                except Exception as e:
+                    _logger.error(f"Hikvision: {emp.name} yoqishda xato: {str(e)}")
+                    error_count += 1
+        
+        _logger.info(f"Hikvision: Sinxronizatsiya yakunlandi. Bloklangan: {disabled_count}, Yoqilgan: {enabled_count}, Xatolar: {error_count}")
+    
+    def _is_working_day(self, employee, weekday):
+        """
+        Xodimning ish jadvali bo'yicha berilgan hafta kuni ish kunmi?
+        
+        Args:
+            employee: hr.employee record
+            weekday: Hafta kuni (0=Dushanba, 6=Yakshanba)
+        
+        Returns:
+            bool: True agar ish kuni bo'lsa
+        """
+        calendar = employee.resource_calendar_id
+        
+        if not calendar:
+            # Ish jadvali yo'q - default: ish kuni deb hisoblaymiz
+            return True
+        
+        # Ish jadvalida shu hafta kuni bormi?
+        return any(
+            int(att.dayofweek) == weekday and att.day_period in ('morning', 'afternoon')
+            for att in calendar.attendance_ids
+        )
+    
+    def action_sync_leave_status(self):
+        """Qo'lda ta'til va dam olish kunini sinxronlash tugmasi"""
+        self.ensure_one()
+        
+        today = fields.Date.today()
+        weekday = today.weekday()
+        
+        # Barcode mavjud barcha xodimlar
+        employees = self.env['hr.employee'].search([
+            ('barcode', '!=', False),
+            ('active', '=', True)
+        ])
+        
+        if not employees:
+            return self._notify("Sinxronizatsiya", "Barcode mavjud xodimlar topilmadi.", 'warning')
+        
+        # TO'LIQ KUNLIK ta'tilda bo'lgan xodimlar (yarim kun va soatlik bloklanmaydi)
+        active_leaves = self.env['hr.leave'].search([
+            ('state', '=', 'validate'),
+            ('date_from', '<=', today),
+            ('date_to', '>=', today),
+            ('request_unit_half', '=', False),   # Yarim kunlik emas
+            ('request_unit_hours', '=', False),  # Soatlik emas
+        ])
+        employees_on_leave_ids = set(active_leaves.mapped('employee_id').ids)
+        
+        # Davlat bayrami tekshirish
+        today_datetime = datetime.combine(today, datetime.min.time())
+        public_holidays = self.env['resource.calendar.leaves'].search([
+            ('date_from', '<=', today_datetime),
+            ('date_to', '>=', today_datetime),
+            ('resource_id', '=', False),
+        ])
+        is_public_holiday = bool(public_holidays)
+        holiday_name = public_holidays[0].name if is_public_holiday else ""
+        
+        # Bloklanishi kerak bo'lgan xodimlar
+        to_block = []
+        for emp in employees:
+            if emp.id in employees_on_leave_ids:
+                to_block.append((emp, "ta'til"))
+            elif is_public_holiday:
+                to_block.append((emp, f"davlat bayrami ({holiday_name})"))
+            elif not self._is_working_day(emp, weekday):
+                to_block.append((emp, "dam olish kuni"))
+        
+        if not to_block:
+            return self._notify("Sinxronizatsiya", "Bugun bloklanishi kerak bo'lgan xodimlar yo'q.", 'info')
+        
+        disabled_count = 0
+        error_count = 0
+        errors = []
+        
+        for emp, reason in to_block:
+            try:
+                self._disable_user_on_device(emp)
+                disabled_count += 1
+            except Exception as e:
+                error_count += 1
+                errors.append(f"{emp.name}: {str(e)}")
+        
+        if error_count == 0:
+            return self._notify("Sinxronizatsiya muvaffaqiyatli", 
+                              f"{disabled_count} ta xodim bloklandi.", 'success')
+        else:
+            msg = f"Bloklangan: {disabled_count}, Xatolar: {error_count}"
+            if errors:
+                msg += ". " + "; ".join(errors[:3])
+            return self._notify("Sinxronizatsiya", msg, 'warning', sticky=True)

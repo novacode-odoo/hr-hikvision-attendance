@@ -6,9 +6,10 @@
         <field name="arch" type="xml">
             <form string="Hikvision Device">
                 <header>
-                    <button name="action_test_connection" string="Test Connection" type="object" class="oe_highlight"/>
-                    <button name="action_fetch_logs" string="Fetch Logs" type="object" class="oe_highlight" invisible="state != 'confirmed'"/>
+                    <button name="action_test_connection" string="Ulanishni Tekshirish" type="object" class="oe_highlight"/>
+                    <button name="action_fetch_logs" string="Loglarni Olish" type="object" class="oe_highlight" invisible="state != 'confirmed'"/>
                     <button name="action_sync_users" string="Xodimlarni Yuklash" type="object" class="oe_highlight" invisible="state != 'confirmed'"/>
+                    <button name="action_sync_leave_status" string="Ta'tillarni Sinxronlash" type="object" invisible="state != 'confirmed'"/>
                     <button name="action_get_device_users" string="Qurilma Foydalanuvchilari" type="object" invisible="state != 'confirmed'"/>
                     <field name="state" widget="statusbar"/>
                 </header>
