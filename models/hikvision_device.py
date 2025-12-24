@@ -1035,9 +1035,7 @@ class HikvisionDevice(models.Model):
         user_data = {
             "UserInfo": {
                 "employeeNo": str(employee.barcode),
-                "Valid": {
-                    "enable": False
-                }
+                "userType": "blackList"  # userType: blackList - to'liq bloklash (yuz tanish ham ishlamaydi)
             }
         }
         
@@ -1063,6 +1061,7 @@ class HikvisionDevice(models.Model):
         user_data = {
             "UserInfo": {
                 "employeeNo": str(employee.barcode),
+                "userType": "normal",  # userType: normal - oddiy foydalanuvchi sifatida tiklash
                 "Valid": {
                     "enable": True,
                     "beginTime": "2020-01-01T00:00:00",
