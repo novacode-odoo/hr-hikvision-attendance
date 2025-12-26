@@ -43,6 +43,15 @@ class HikvisionDevice(models.Model):
         ('error', 'Error')
     ], string='Status', default='draft')
     last_fetch_time = fields.Datetime(string='Last Fetch Time')
+    
+    # Avtomatik sinxronizatsiya switch
+    auto_sync_enabled = fields.Boolean(
+        string='Avtomatik Sinxronlash',
+        default=True,
+        help="Yoqilganda: Xodim yaratilganda, o'zgartirilganda yoki o'chirilganda "
+             "avtomatik qurilmaga sinxronlanadi.\n"
+             "O'chirilganda: Faqat qo'lda 'Xodimlarni Yuklash' tugmasi orqali sinxronlanadi."
+    )
 
     # =====================================================
     # HELPER METHODS

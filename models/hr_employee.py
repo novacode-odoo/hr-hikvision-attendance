@@ -23,8 +23,11 @@ class HrEmployeeHikvision(models.Model):
         """
         employees = super().create(vals_list)
         
-        # Barcha tasdiqlangan qurilmalar
-        devices = self.env['hikvision.device'].search([('state', '=', 'confirmed')])
+        # Faqat auto_sync yoqilgan va tasdiqlangan qurilmalar
+        devices = self.env['hikvision.device'].search([
+            ('state', '=', 'confirmed'),
+            ('auto_sync_enabled', '=', True)
+        ])
         
         if devices:
             for employee in employees:
@@ -118,8 +121,11 @@ class HrEmployeeHikvision(models.Model):
                 if not employee.barcode:
                     continue
                     
-                # Barcha tasdiqlangan qurilmalarga sinxronlash
-                devices = self.env['hikvision.device'].search([('state', '=', 'confirmed')])
+                # Faqat auto_sync yoqilgan va tasdiqlangan qurilmalarga sinxronlash
+                devices = self.env['hikvision.device'].search([
+                    ('state', '=', 'confirmed'),
+                    ('auto_sync_enabled', '=', True)
+                ])
                 
                 if not devices:
                     continue
@@ -221,7 +227,10 @@ class HrEmployeeHikvision(models.Model):
         
         # Qurilmalardan o'chirish
         if employees_to_delete:
-            devices = self.env['hikvision.device'].search([('state', '=', 'confirmed')])
+            devices = self.env['hikvision.device'].search([
+                ('state', '=', 'confirmed'),
+                ('auto_sync_enabled', '=', True)
+            ])
             
             if devices:
                 for emp_data in employees_to_delete:
