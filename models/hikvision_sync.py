@@ -9,8 +9,10 @@ yuz rasmlarini yuklash va boshqarish uchun metodlarni o'z ichiga oladi.
 import json
 import base64
 import logging
+import threading
 
-from odoo import models
+from odoo import models, api, SUPERUSER_ID
+from odoo.modules.registry import Registry
 
 _logger = logging.getLogger(__name__)
 
@@ -25,8 +27,8 @@ class HikvisionSyncMixin(models.AbstractModel):
         """
         Odoo xodimlarini Hikvision qurilmasiga sinxronizatsiya qilish.
         
-        Optimallashtirilgan: Faqat qurilmada mavjud bo'lmagan xodimlarni yuklaydi.
-        Bu 200 xodim uchun ~1200 ta so'rovni ~400 taga kamaytiradi.
+        Background thread orqali ishga tushiriladi - HTTP timeout muammosini hal qiladi.
+        Foydalanuvchi kutmaydi, jarayon orqa fonda davom etadi.
         """
         self.ensure_one()
         
@@ -40,26 +42,148 @@ class HikvisionSyncMixin(models.AbstractModel):
                               "Sinxronizatsiya uchun barcode mavjud bo'lgan xodimlar topilmadi.", 
                               'warning')
         
-        # Qurilmadagi mavjud xodimlarni olish
+        # Qurilmadagi mavjud xodimlarni tekshirish
         existing_employee_nos = self._get_existing_employees()
-        _logger.info(f"Hikvision: Qurilmada {len(existing_employee_nos)} ta xodim mavjud")
+        
+        # Yangi xodimlarni aniqlash
+        new_employees = employees.filtered(lambda e: str(e.barcode) not in existing_employee_nos)
+        skipped_count = len(employees) - len(new_employees)
+        
+        if not new_employees:
+            return self._notify('Sinxronizatsiya yakunlandi', 
+                              f"Barcha {skipped_count} ta xodim allaqachon qurilmada mavjud.", 
+                              'info')
+        
+        # Background threadda ishga tushirish
+        device_id = self.id
+        db_name = self.env.cr.dbname
+        user_id = self.env.user.id
+        employee_ids = new_employees.ids
+        
+        def sync_in_background():
+            """Background threadda xodimlarni yuklash"""
+            try:
+                db_registry = Registry(db_name)
+                with db_registry.cursor() as cr:
+                    env = api.Environment(cr, user_id, {})
+                    device = env['hikvision.device'].browse(device_id)
+                    
+                    if not device.exists():
+                        _logger.error("Hikvision: Qurilma topilmadi")
+                        return
+                    
+                    employees_to_sync = env['hr.employee'].browse(employee_ids)
+                    
+                    success_count = 0
+                    face_success_count = 0
+                    error_count = 0
+                    face_errors = []
+                    
+                    total = len(employees_to_sync)
+                    _logger.info(f"Hikvision: Background sync boshlandi - {total} ta xodim")
+                    
+                    for idx, emp in enumerate(employees_to_sync, 1):
+                        try:
+                            device._upload_user_info_new(emp)
+                            success_count += 1
+                            
+                            if emp.image_1920:
+                                try:
+                                    device._upload_face_data_new(emp)
+                                    face_success_count += 1
+                                except Exception as face_err:
+                                    face_errors.append(f"{emp.name}: {str(face_err)}")
+                            
+                            # Har 10 ta xodimdan keyin progress log
+                            if idx % 10 == 0:
+                                _logger.info(f"Hikvision: Progress - {idx}/{total} ({int(idx/total*100)}%)")
+                                    
+                        except Exception as e:
+                            error_count += 1
+                            _logger.error(f"Hikvision: {emp.name} xatosi - {str(e)}")
+                    
+                    # Yakuniy natija
+                    _logger.info(f"Hikvision: Sync yakunlandi - Yuklandi: {success_count}, Yuzlar: {face_success_count}, Xatolar: {error_count}")
+                    
+                    # Foydalanuvchiga notification yuborish
+                    msg_parts = []
+                    if skipped_count > 0:
+                        msg_parts.append(f'Mavjud: {skipped_count} ta')
+                    if success_count > 0:
+                        msg_parts.append(f'Yangi yuklandi: {success_count} ta')
+                    if face_success_count > 0:
+                        msg_parts.append(f'Yuz rasmlari: {face_success_count} ta')
+                    if face_errors:
+                        msg_parts.append(f'Yuz xatolari: {len(face_errors)} ta')
+                    if error_count > 0:
+                        msg_parts.append(f'Xatolar: {error_count} ta')
+                    
+                    notif_type = 'success' if error_count == 0 and not face_errors else 'warning'
+                    
+                    # Bus notification yuborish
+                    user = env['res.users'].browse(user_id)
+                    env['bus.bus']._sendone(
+                        user.partner_id,
+                        'simple_notification',
+                        {
+                            'title': '✅ Sinxronizatsiya yakunlandi',
+                            'message': '. '.join(msg_parts),
+                            'type': notif_type,
+                            'sticky': error_count > 0,
+                        }
+                    )
+                    
+                    cr.commit()
+                    
+            except Exception as e:
+                _logger.error(f"Hikvision: Background sync xatosi - {str(e)}")
+        
+        # Threadni ishga tushirish
+        thread = threading.Thread(target=sync_in_background, daemon=True)
+        thread.start()
+        
+        _logger.info(f"Hikvision: Background sync boshlandi - {len(new_employees)} ta yangi xodim")
+        
+        # Foydalanuvchiga darhol javob qaytarish
+        return self._notify(
+            '🔄 Sinxronizatsiya boshlandi', 
+            f"{len(new_employees)} ta yangi xodim yuklanmoqda (mavjud: {skipped_count} ta).\n"
+            "Jarayon orqa fonda davom etmoqda. Tugaganda xabar keladi.",
+            'info'
+        )
+    
+    def action_sync_users_sync(self):
+        """
+        Xodimlarni sinxron (kutib) yuklash - test uchun.
+        
+        Bu eski usul - HTTP timeout bo'lishi mumkin.
+        """
+        self.ensure_one()
+        
+        employees = self.env['hr.employee'].search([
+            ('barcode', '!=', False),
+            ('active', '=', True)
+        ])
+        
+        if not employees:
+            return self._notify('Xodimlar topilmadi', 
+                              "Sinxronizatsiya uchun barcode mavjud bo'lgan xodimlar topilmadi.", 
+                              'warning')
+        
+        existing_employee_nos = self._get_existing_employees()
         
         success_count = 0
         face_success_count = 0
         skipped_count = 0
         error_count = 0
         face_errors = []
-        errors = []
         
         for emp in employees:
             try:
-                # Agar xodim allaqachon qurilmada bo'lsa, o'tkazib yuboramiz
                 if str(emp.barcode) in existing_employee_nos:
                     skipped_count += 1
-                    _logger.debug(f"Hikvision: {emp.name} allaqachon mavjud, o'tkazib yuborildi")
                     continue
                 
-                # Yangi xodimni yuklash (faqat POST/Record)
                 self._upload_user_info_new(emp)
                 success_count += 1
                 
@@ -72,9 +196,7 @@ class HikvisionSyncMixin(models.AbstractModel):
                         
             except Exception as e:
                 error_count += 1
-                errors.append(f"{emp.name}: {str(e)}")
         
-        # Natija xabari
         msg_parts = []
         if skipped_count > 0:
             msg_parts.append(f'Mavjud: {skipped_count} ta (o\'tkazib yuborildi)')
