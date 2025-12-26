@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Dashboard Menu -->
+    <menuitem 
+        id="menu_attendance_dashboard_root"
+        name="Davomat Dashboard"
+        web_icon="hr_attendance_dashboard,static/description/icon.png"
+        sequence="5"/>
+
+    <menuitem 
+        id="menu_attendance_dashboard_main"
+        name="Dashboard"
+        parent="menu_attendance_dashboard_root"
+        action="action_attendance_dashboard"
+        sequence="1"/>
+
+    <!-- HR Attendance menyusiga ham qo'shish -->
+    <menuitem 
+        id="menu_attendance_dashboard_hr"
+        name="📊 Davomat Dashboard"
+        parent="hr_attendance.menu_hr_attendance_root"
+        action="action_attendance_dashboard"
+        sequence="100"/>
+</odoo>

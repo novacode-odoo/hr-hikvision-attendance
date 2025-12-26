@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="hr_attendance_dashboard.Dashboard">
+        <div class="attendance-dashboard">
+            <!-- Dashboard Header -->
+            <div class="dashboard-header">
+                <h1>
+                    <span class="header-icon">📊</span>
+                    Davomat Dashboard
+                </h1>
+                <div class="header-right">
+                    <span class="last-update">🕐 <t t-esc="state.lastUpdate"/></span>
+                    <button class="refresh-btn" t-att-class="{ rotating: state.refreshing }" t-on-click="refreshData">
+                        <span class="refresh-icon">🔄</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <t t-if="state.loading">
+                <div class="dashboard-loading">
+                    <div class="spinner"></div>
+                    <span>Ma'lumotlar yuklanmoqda...</span>
+                </div>
+            </t>
+
+            <t t-else="">
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label class="filter-label">🏢 Bo'lim:</label>
+                        <select class="filter-select" t-on-change="onDepartmentChange">
+                            <option value="">Barchasi</option>
+                            <t t-foreach="state.departments" t-as="dept" t-key="dept.id">
+                                <option t-att-value="dept.id" t-att-selected="state.selectedDepartment === dept.id">
+                                    <t t-esc="dept.name"/>
+                                </option>
+                            </t>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">💼 Lavozim:</label>
+                        <select class="filter-select" t-on-change="onJobChange">
+                            <option value="">Barchasi</option>
+                            <t t-foreach="state.jobs" t-as="job" t-key="job.id">
+                                <option t-att-value="job.id" t-att-selected="state.selectedJob === job.id">
+                                    <t t-esc="job.name"/>
+                                </option>
+                            </t>
+                        </select>
+                    </div>
+                    <t t-if="state.selectedDepartment || state.selectedJob">
+                        <button class="clear-filter-btn" t-on-click="clearFilters">
+                            ✕ Tozalash
+                        </button>
+                    </t>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <button t-att-class="'tab-btn ' + (state.activeTab === 'overview' ? 'active' : '')" 
+                            t-on-click="() => this.setActiveTab('overview')">
+                        📊 Umumiy
+                    </button>
+                    <button t-att-class="'tab-btn ' + (state.activeTab === 'employees' ? 'active' : '')" 
+                            t-on-click="() => this.setActiveTab('employees')">
+                        👥 Xodimlar
+                    </button>
+                    <button t-att-class="'tab-btn ' + (state.activeTab === 'monthly' ? 'active' : '')" 
+                            t-on-click="() => this.setActiveTab('monthly')">
+                        📅 Oylik
+                    </button>
+                </div>
+
+                <!-- Overview Tab -->
+                <t t-if="state.activeTab === 'overview'">
+                    <div class="overview-layout">
+                        <!-- Left Column - Stats -->
+                        <div class="stats-column">
+                            <div class="stats-grid">
+                                <div class="stat-card info">
+                                    <div class="stat-icon">👥</div>
+                                    <div class="stat-value" t-esc="state.todayStats.total_employees || 0"/>
+                                    <div class="stat-label">Jami xodimlar</div>
+                                </div>
+
+                                <div class="stat-card success">
+                                    <div class="stat-icon">✅</div>
+                                    <div class="stat-value" t-esc="state.todayStats.present_employees || 0"/>
+                                    <div class="stat-label">Kelganlar</div>
+                                    <div class="stat-change positive">
+                                        📈 <t t-esc="state.todayStats.attendance_rate || 0"/>%
+                                    </div>
+                                </div>
+
+                                <div class="stat-card danger">
+                                    <div class="stat-icon">❌</div>
+                                    <div class="stat-value" t-esc="state.todayStats.absent_employees || 0"/>
+                                    <div class="stat-label">Kelmaganlar</div>
+                                </div>
+
+                                <div class="stat-card">
+                                    <div class="stat-icon">💼</div>
+                                    <div class="stat-value" t-esc="state.todayStats.currently_working || 0"/>
+                                    <div class="stat-label">Hozirda ishda</div>
+                                    <div class="stat-change">🟢 Live</div>
+                                </div>
+
+                                <div class="stat-card warning">
+                                    <div class="stat-icon">⏰</div>
+                                    <div class="stat-value" t-esc="state.todayStats.late_count || 0"/>
+                                    <div class="stat-label">Kech qolganlar</div>
+                                </div>
+
+                                <div class="stat-card purple">
+                                    <div class="stat-icon">🏃</div>
+                                    <div class="stat-value" t-esc="state.todayStats.early_leave_count || 0"/>
+                                    <div class="stat-label">Erta ketganlar</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column - Recent Checkins -->
+                        <div class="checkins-column">
+                            <div class="recent-checkins">
+                                <div class="table-header">
+                                    <div class="table-title">📋 Oxirgi Kirishlar</div>
+                                </div>
+                                <div class="checkins-scroll">
+                                    <t t-if="state.recentCheckins.length > 0">
+                                        <table class="checkin-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Xodim</th>
+                                                    <th>Bo'lim</th>
+                                                    <th>Kirish</th>
+                                                    <th>Holat</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="state.recentCheckins" t-as="checkin" t-key="checkin_index">
+                                                    <tr>
+                                                        <td>
+                                                            <div class="employee-info">
+                                                                <div class="employee-avatar">
+                                                                    <t t-esc="getInitials(checkin.employee_name)"/>
+                                                                </div>
+                                                                <div class="employee-name" t-esc="checkin.employee_name"/>
+                                                            </div>
+                                                        </td>
+                                                        <td t-esc="checkin.department"/>
+                                                        <td><span class="time-badge in" t-esc="checkin.check_in"/></td>
+                                                        <td>
+                                                            <span t-att-class="'status-badge ' + (checkin.is_late ? 'late' : 'on-time')">
+                                                                <t t-if="checkin.is_late">⚠️</t>
+                                                                <t t-else="">✅</t>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="empty-state">
+                                            <div class="empty-icon">📋</div>
+                                            <div class="empty-text">Bugun hali kirish yo'q</div>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
+                <!-- Employees Tab -->
+                <t t-if="state.activeTab === 'employees'">
+                    <div class="employee-filters">
+                        <button t-att-class="'emp-filter-btn ' + (state.employeeFilter === 'all' ? 'active' : '')"
+                                t-on-click="() => this.onEmployeeFilterChange('all')">
+                            👥 Barchasi
+                        </button>
+                        <button t-att-class="'emp-filter-btn ' + (state.employeeFilter === 'present' ? 'active' : '')"
+                                t-on-click="() => this.onEmployeeFilterChange('present')">
+                            ✅ Kelganlar
+                        </button>
+                        <button t-att-class="'emp-filter-btn ' + (state.employeeFilter === 'absent' ? 'active' : '')"
+                                t-on-click="() => this.onEmployeeFilterChange('absent')">
+                            ❌ Kelmaganlar
+                        </button>
+                        <button t-att-class="'emp-filter-btn ' + (state.employeeFilter === 'working' ? 'active' : '')"
+                                t-on-click="() => this.onEmployeeFilterChange('working')">
+                            🟢 Hozir ishda
+                        </button>
+                    </div>
+
+                    <div class="employee-list-container">
+                        <t t-if="state.employeeList.length > 0">
+                            <table class="employee-table">
+                                <thead>
+                                    <tr>
+                                        <th>Xodim</th>
+                                        <th>Bo'lim</th>
+                                        <th>Lavozim</th>
+                                        <th>Kirish</th>
+                                        <th>Chiqish</th>
+                                        <th>Holat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="state.employeeList" t-as="emp" t-key="emp.id">
+                                        <tr t-att-class="getStatusClass(emp)">
+                                            <td>
+                                                <div class="employee-info">
+                                                    <div class="employee-avatar">
+                                                        <t t-esc="getInitials(emp.name)"/>
+                                                    </div>
+                                                    <div class="employee-name" t-esc="emp.name"/>
+                                                </div>
+                                            </td>
+                                            <td t-esc="emp.department"/>
+                                            <td t-esc="emp.job"/>
+                                            <td><span class="time-badge in" t-esc="emp.check_in"/></td>
+                                            <td><span class="time-badge out" t-esc="emp.check_out"/></td>
+                                            <td>
+                                                <span t-att-class="'status-badge ' + getStatusClass(emp)" 
+                                                      t-esc="getStatusText(emp)"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+                        <t t-else="">
+                            <div class="empty-state">
+                                <div class="empty-icon">👥</div>
+                                <div class="empty-text">Xodimlar topilmadi</div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+
+                <!-- Monthly Tab -->
+                <t t-if="state.activeTab === 'monthly'">
+                    <!-- Month/Year Selector -->
+                    <div class="month-selector-bar">
+                        <div class="selector-group">
+                            <label class="selector-label">📅 Oy:</label>
+                            <select class="month-select" t-on-change="onMonthChange">
+                                <t t-foreach="getMonthOptions()" t-as="m" t-key="m.value">
+                                    <option t-att-value="m.value" t-att-selected="state.selectedMonth === m.value">
+                                        <t t-esc="m.label"/>
+                                    </option>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="selector-group">
+                            <label class="selector-label">📆 Yil:</label>
+                            <select class="year-select" t-on-change="onYearChange">
+                                <t t-foreach="getYearOptions()" t-as="y" t-key="y">
+                                    <option t-att-value="y" t-att-selected="state.selectedYear === y">
+                                        <t t-esc="y"/>
+                                    </option>
+                                </t>
+                            </select>
+                        </div>
+                        <button class="export-excel-btn" t-on-click="exportToExcel">
+                            📥 Excel Export
+                        </button>
+                    </div>
+
+                    <!-- Monthly Summary Table -->
+                    <div class="monthly-summary-container">
+                        <div class="table-header">
+                            <div class="table-title">📊 Oylik Hisobot - <t t-esc="state.monthlySummary.month_name"/> <t t-esc="state.monthlySummary.year"/></div>
+                        </div>
+                        <t t-if="state.monthlySummary.employees.length > 0">
+                            <table class="monthly-table">
+                                <thead>
+                                    <tr>
+                                        <th>Xodim</th>
+                                        <th>Bo'lim</th>
+                                        <th>Kerak kun</th>
+                                        <th>Ishladi kun</th>
+                                        <th>Kerak soat</th>
+                                        <th>Ishladi soat</th>
+                                        <th>Ta'til soat</th>
+                                        <th>Foiz</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="state.monthlySummary.employees" t-as="emp" t-key="emp.id">
+                                        <tr>
+                                            <td>
+                                                <div class="employee-info">
+                                                    <div class="employee-avatar">
+                                                        <t t-esc="getInitials(emp.name)"/>
+                                                    </div>
+                                                    <div class="employee-name" t-esc="emp.name"/>
+                                                </div>
+                                            </td>
+                                            <td t-esc="emp.department"/>
+                                            <td class="text-center">
+                                                <span class="days-badge expected" t-esc="emp.expected_days"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="days-badge worked" t-esc="emp.worked_days"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="hours-badge expected" t-esc="emp.expected_hours"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="hours-badge worked" t-esc="emp.worked_hours"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="hours-badge leave" t-esc="emp.leave_hours"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <span t-att-class="'rate-badge ' + (emp.rate >= 90 ? 'high' : emp.rate >= 70 ? 'medium' : 'low')">
+                                                    <t t-esc="emp.rate"/>%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+                        <t t-else="">
+                            <div class="empty-state">
+                                <div class="empty-icon">📅</div>
+                                <div class="empty-text">Ma'lumot topilmadi</div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </div>
+    </t>
+
+</templates>
