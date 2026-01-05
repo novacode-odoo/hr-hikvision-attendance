@@ -4,13 +4,20 @@ Hikvision Leave Sync Mixin
 
 Bu mixin ta'til va dam olish kunlarini Hikvision qurilmasi bilan
 sinxronizatsiya qilish uchun metodlarni o'z ichiga oladi.
+
+OPTIMIZATSIYA:
+- hikvision_status field orqali faqat o'zgargan xodimlarni yangilash
+- Background thread orqali uzoq jarayonlarni bajarish
+- Har bir xodimdan keyin commit qilish
 """
 
 import json
 import logging
+import threading
 from datetime import datetime
 
-from odoo import models, fields, api
+from odoo import models, fields, api, SUPERUSER_ID
+from odoo.modules.registry import Registry
 
 _logger = logging.getLogger(__name__)
 
@@ -63,9 +70,24 @@ class HikvisionLeaveSyncMixin(models.AbstractModel):
                           data=json.dumps(user_data))
         _logger.info(f"Hikvision [{self.name}]: {employee.name} yoqildi")
     
+    def _get_expected_status(self, employee, today, weekday, employees_on_leave_ids, is_public_holiday):
+        """Xodimning kutilgan holatini aniqlash."""
+        if employee.id in employees_on_leave_ids:
+            return 'blocked'
+        elif is_public_holiday:
+            return 'blocked'
+        elif not self._is_working_day(employee, weekday):
+            return 'blocked'
+        return 'normal'
+    
     @api.model
     def _cron_sync_leave_status(self):
-        """Kunlik cron job: Ta'til va dam olish kuniga ko'ra xodimlarni bloklash/yoqish."""
+        """
+        OPTIMALLASHTIRILGAN kunlik cron job.
+        
+        Faqat hikvision_status O'ZGARGAN xodimlarni yangilaydi.
+        Background thread ishlatadi.
+        """
         today = fields.Date.today()
         weekday = today.weekday()
         
@@ -77,6 +99,7 @@ class HikvisionLeaveSyncMixin(models.AbstractModel):
         ])
         
         if not employees:
+            _logger.info("Hikvision: Barcode mavjud xodimlar topilmadi")
             return
         
         # TO'LIQ KUNLIK ta'tilda bo'lgan xodimlar
@@ -97,56 +120,82 @@ class HikvisionLeaveSyncMixin(models.AbstractModel):
             ('resource_id', '=', False),
         ])
         is_public_holiday = bool(public_holidays)
-        holiday_name = public_holidays[0].name if is_public_holiday else ""
         
-        # Bloklash/yoqish ro'yxatlari
-        to_block = []
-        to_enable = []
+        # FAQAT O'ZGARGAN xodimlarni aniqlash
+        to_change = []  # [(employee_id, new_status), ...]
         
         for emp in employees:
-            should_block = False
-            reason = ""
+            expected = self._get_expected_status(
+                emp, today, weekday, employees_on_leave_ids, is_public_holiday
+            )
             
-            if emp.id in employees_on_leave_ids:
-                should_block = True
-                reason = "ta'til"
-            elif is_public_holiday:
-                should_block = True
-                reason = f"davlat bayrami ({holiday_name})"
-            elif not self._is_working_day(emp, weekday):
-                should_block = True
-                reason = "dam olish kuni"
-            
-            if should_block:
-                to_block.append((emp, reason))
-            else:
-                to_enable.append(emp)
+            # Faqat o'zgargan bo'lsa
+            if emp.hikvision_status != expected:
+                to_change.append((emp.id, expected))
         
-        # Qurilmalarda sinxronlash
-        devices = self.search([('state', '=', 'confirmed')])
-        
-        if not devices:
+        if not to_change:
+            _logger.info("Hikvision: Hech qanday o'zgarish yo'q, barcha xodimlar to'g'ri holatda")
             return
         
-        disabled_count = 0
-        enabled_count = 0
+        _logger.info(f"Hikvision: {len(to_change)} ta xodim yangilanishi kerak")
         
-        for device in devices:
-            for emp, reason in to_block:
-                try:
-                    device._disable_user_on_device(emp)
-                    disabled_count += 1
-                except Exception as e:
-                    _logger.error(f"Hikvision: {emp.name} bloklashda xato: {str(e)}")
-            
-            for emp in to_enable:
-                try:
-                    device._enable_user_on_device(emp)
-                    enabled_count += 1
-                except Exception as e:
-                    _logger.error(f"Hikvision: {emp.name} yoqishda xato: {str(e)}")
+        # Qurilmalar
+        device_ids = self.search([('state', '=', 'confirmed')]).ids
         
-        _logger.info(f"Hikvision: Sinxronizatsiya yakunlandi. Bloklangan: {disabled_count}, Yoqilgan: {enabled_count}")
+        if not device_ids:
+            _logger.warning("Hikvision: Tasdiqlangan qurilmalar topilmadi")
+            return
+        
+        # Background threadda sinxronlash
+        db_name = self.env.cr.dbname
+        
+        def sync_in_background():
+            """Background threadda yangi DB ulanish bilan ishlash"""
+            try:
+                db_registry = Registry(db_name)
+                with db_registry.cursor() as cr:
+                    env = api.Environment(cr, SUPERUSER_ID, {})
+                    
+                    devices = env['hikvision.device'].browse(device_ids)
+                    
+                    success_count = 0
+                    error_count = 0
+                    
+                    for emp_id, new_status in to_change:
+                        emp = env['hr.employee'].browse(emp_id)
+                        
+                        if not emp.exists():
+                            continue
+                        
+                        try:
+                            for device in devices:
+                                if new_status == 'blocked':
+                                    device._disable_user_on_device(emp)
+                                else:
+                                    device._enable_user_on_device(emp)
+                            
+                            # DB da hikvision_status yangilash
+                            emp.write({'hikvision_status': new_status})
+                            success_count += 1
+                            
+                            # Har bir xodimdan keyin commit
+                            cr.commit()
+                            
+                        except Exception as e:
+                            error_count += 1
+                            _logger.error(f"Hikvision: {emp.name} sinxronlashda xato: {str(e)}")
+                            cr.rollback()
+                    
+                    _logger.info(f"Hikvision: Cron yakunlandi. Muvaffaqiyatli: {success_count}, Xatolar: {error_count}")
+                    
+            except Exception as e:
+                _logger.error(f"Hikvision: Background sync xatosi: {str(e)}")
+        
+        # Threadni ishga tushirish
+        thread = threading.Thread(target=sync_in_background, daemon=True)
+        thread.start()
+        
+        _logger.info(f"Hikvision: Background sync boshlandi - {len(to_change)} ta xodim")
     
     def _is_working_day(self, employee, weekday):
         """Xodimning ish jadvali bo'yicha berilgan hafta kuni ish kunmi?"""
@@ -159,6 +208,10 @@ class HikvisionLeaveSyncMixin(models.AbstractModel):
             int(att.dayofweek) == weekday and att.day_period in ('morning', 'afternoon')
             for att in calendar.attendance_ids
         )
+    
+    # =========================================================================
+    # QO'LDA SINXRONLASH TUGMALARI
+    # =========================================================================
     
     def action_sync_leave_status(self):
         """Qo'lda ta'til va dam olish kunini sinxronlash tugmasi"""
@@ -214,6 +267,7 @@ class HikvisionLeaveSyncMixin(models.AbstractModel):
         for emp, reason in to_block:
             try:
                 self._disable_user_on_device(emp)
+                emp.hikvision_status = 'blocked'
                 disabled_count += 1
             except Exception as e:
                 error_count += 1
@@ -224,3 +278,7 @@ class HikvisionLeaveSyncMixin(models.AbstractModel):
         else:
             return self._notify("Sinxronizatsiya", 
                               f"Bloklangan: {disabled_count}, Xatolar: {error_count}", 'warning', sticky=True)
+
+
+
+

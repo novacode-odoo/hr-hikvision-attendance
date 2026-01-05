@@ -6,7 +6,7 @@ Xodim ma'lumotlari o'zgarganda Hikvision qurilmasiga avtomatik sinxronlash.
 """
 
 import logging
-from odoo import models, api
+from odoo import models, api, fields
 
 _logger = logging.getLogger(__name__)
 
@@ -15,6 +15,13 @@ class HrEmployeeHikvision(models.Model):
     """HR Employee modelini Hikvision integratsiyasi uchun kengaytirish"""
     
     _inherit = 'hr.employee'
+    
+    # Hikvision qurilmasidagi holat
+    hikvision_status = fields.Selection([
+        ('normal', 'Normal'),
+        ('blocked', 'Bloklangan')
+    ], string='Hikvision Holati', default='normal',
+       help="Xodimning Hikvision qurilmasidagi hozirgi holati")
 
     @api.model_create_multi
     def create(self, vals_list):

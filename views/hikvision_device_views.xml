@@ -11,6 +11,7 @@
                     <button name="action_sync_users" string="Xodimlarni Yuklash" type="object" class="oe_highlight" invisible="state != 'confirmed'"/>
                     <button name="action_sync_leave_status" string="Ta'tillarni Sinxronlash" type="object" invisible="state != 'confirmed'"/>
                     <button name="action_get_device_users" string="Qurilma Foydalanuvchilari" type="object" invisible="state != 'confirmed'"/>
+
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
