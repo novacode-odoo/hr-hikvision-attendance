@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Hikvision qurilmasidan loglarni olish (har 1 daqiqada) -->
+        <record id="ir_cron_fetch_hikvision_logs" model="ir.cron">
+            <field name="name">Hikvision: Fetch Attendance Logs</field>
+            <field name="model_id" ref="model_hikvision_device"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_fetch_logs()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Ochiq attendance'larni avtomatik yopish (har kuni soat 20:00 da) -->
+        <record id="ir_cron_auto_close_attendance" model="ir.cron">
+            <field name="name">Hikvision: Auto Close Attendance</field>
+            <field name="model_id" ref="model_hikvision_device"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_auto_close_attendance()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="nextcall">2025-12-30 15:00:00</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Ta'til holatini sinxronlash (har kuni soat 02:00 da) -->
+        <record id="ir_cron_sync_leave_status" model="ir.cron">
+            <field name="name">Hikvision: Ta'til holatini sinxronlash</field>
+            <field name="model_id" ref="model_hikvision_device"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_sync_leave_status()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="nextcall">2025-12-30 21:00:00</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Loglarni Telegram ga yuborish (har 1 daqiqada) -->
+        <record id="ir_cron_send_logs_telegram" model="ir.cron">
+            <field name="name">Hikvision: Log Telegram Notification</field>
+            <field name="model_id" ref="model_hikvision_device"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_logs_to_telegram()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Haftalik log tozalash (har yakshanba soat 03:00 da) -->
+        <record id="ir_cron_cleanup_logs" model="ir.cron">
+            <field name="name">Hikvision: Haftalik Log Tozalash</field>
+            <field name="model_id" ref="model_hikvision_device"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_cleanup_logs()</field>
+            <field name="interval_number">7</field>
+            <field name="interval_type">days</field>
+            <field name="nextcall">2026-01-12 22:00:00</field>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>
+
+

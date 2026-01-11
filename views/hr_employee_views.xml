@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Xodim formasiga Hikvision Status qo'shish -->
+    <record id="view_employee_form_hikvision" model="ir.ui.view">
+        <field name="name">hr.employee.form.hikvision</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='identification_group']" position="inside">
+                <field name="hikvision_status" readonly="1" widget="badge" 
+                       decoration-success="hikvision_status == 'normal'" 
+                       decoration-danger="hikvision_status == 'blocked'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Xodimlar ro'yxatiga Hikvision Status ustuni qo'shish -->
+    <record id="view_employee_tree_hikvision" model="ir.ui.view">
+        <field name="name">hr.employee.tree.hikvision</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="hikvision_status" optional="show" widget="badge" 
+                       decoration-success="hikvision_status == 'normal'" 
+                       decoration-danger="hikvision_status == 'blocked'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="hr_attendance_dashboard.Dashboard">
+        <div class="attendance-dashboard">
+            <!-- Dashboard Header -->
+            <div class="dashboard-header">
+                <h1>
+                    <span class="header-icon">📊</span>
+                    Davomat Dashboard
+                </h1>
+                <div class="header-right">
+                    <span class="last-update">🕐 <t t-esc="state.lastUpdate"/></span>
+                    <button class="refresh-btn" t-att-class="{ rotating: state.refreshing }" t-on-click="refreshData">
+                        <span class="refresh-icon">🔄</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <t t-if="state.loading">
+                <div class="dashboard-loading">
+                    <div class="spinner"></div>
+                    <span>Ma'lumotlar yuklanmoqda...</span>
+                </div>
+            </t>
+
+            <t t-else="">
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label class="filter-label">🏢 Bo'lim:</label>
+                        <select class="filter-select" t-on-change="onDepartmentChange">
+                            <option value="">Barchasi</option>
+                            <t t-foreach="state.departments" t-as="dept" t-key="dept.id">
+                                <option t-att-value="dept.id" t-att-selected="state.selectedDepartment === dept.id">
+                                    <t t-esc="dept.name"/>
+                                </option>
+                            </t>
+                        </select>
+                    </div>
+                    <t t-if="state.selectedDepartment">
+                        <button class="clear-filter-btn" t-on-click="clearFilters">
+                            ✕ Tozalash
+                        </button>
+                    </t>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <button t-att-class="'tab-btn ' + (state.activeTab === 'overview' ? 'active' : '')" 
+                            t-on-click="() => this.setActiveTab('overview')">
+                        📊 Umumiy
+                    </button>
+                    <button t-att-class="'tab-btn ' + (state.activeTab === 'monthly' ? 'active' : '')" 
+                            t-on-click="() => this.setActiveTab('monthly')">
+                        📅 Oylik
+                    </button>
+                </div>
+
+                <!-- Overview Tab -->
+                <t t-if="state.activeTab === 'overview'">
+                    <div class="overview-layout">
+                        <!-- Stats Cards - Yonma-yon -->
+                        <div class="stats-grid">
+                            <div class="stat-card info">
+                                <div class="stat-icon">👥</div>
+                                <div class="stat-value" t-esc="state.todayStats.total_employees || 0"/>
+                                <div class="stat-label">Jami xodimlar</div>
+                            </div>
+
+                            <div class="stat-card success">
+                                <div class="stat-icon">✅</div>
+                                <div class="stat-value" t-esc="state.todayStats.present_employees || 0"/>
+                                <div class="stat-label">Kelganlar</div>
+                                <div class="stat-change positive">
+                                    📈 <t t-esc="state.todayStats.attendance_rate || 0"/>%
+                                </div>
+                            </div>
+
+                            <div class="stat-card danger">
+                                <div class="stat-icon">❌</div>
+                                <div class="stat-value" t-esc="state.todayStats.absent_employees || 0"/>
+                                <div class="stat-label">Kelmaganlar</div>
+                            </div>
+
+                            <div class="stat-card purple clickable" t-on-click="toggleLeaveList">
+                                <div class="stat-icon">🏖️</div>
+                                <div class="stat-value" t-esc="state.todayStats.on_leave_count || 0"/>
+                                <div class="stat-label">Ta'tilda</div>
+                                <div class="stat-hint">👆 bosing</div>
+                            </div>
+                        </div>
+
+                        <!-- On Leave Employees Dropdown -->
+                        <t t-if="state.showLeaveList">
+                            <div class="leave-employees-dropdown">
+                                <div class="section-header">
+                                    <h3>🏖️ Bugun ta'tildagilar (<t t-esc="state.onLeaveEmployees.length"/> ta)</h3>
+                                    <button class="close-btn" t-on-click="toggleLeaveList">✕</button>
+                                </div>
+                                <t t-if="state.onLeaveEmployees.length > 0">
+                                    <div class="leave-list-scroll">
+                                        <table class="absent-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Xodim</th>
+                                                    <th>Bo'lim</th>
+                                                    <th>Ta'til turi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="state.onLeaveEmployees" t-as="emp" t-key="emp.id">
+                                                    <tr>
+                                                        <td t-esc="emp_index + 1"/>
+                                                        <td>
+                                                            <div class="employee-info">
+                                                                <div class="employee-avatar leave">
+                                                                    <t t-esc="getInitials(emp.name)"/>
+                                                                </div>
+                                                                <div class="employee-name" t-esc="emp.name"/>
+                                                            </div>
+                                                        </td>
+                                                        <td t-esc="emp.department"/>
+                                                        <td><span class="leave-type-badge" t-esc="emp.leave_type"/></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">🎉</div>
+                                        <div class="empty-text">Bugun ta'tilda xodim yo'q</div>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+
+                        <!-- Absent Employees List -->
+                        <div class="absent-employees-section">
+                            <div class="section-header">
+                                <h3>❌ Kelmaganlar ro'yxati (<t t-esc="state.absentEmployees.length"/> ta)</h3>
+                            </div>
+                            <t t-if="state.absentEmployees.length > 0">
+                                <div class="absent-list-scroll">
+                                    <table class="absent-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Xodim</th>
+                                                <th>Bo'lim</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="state.absentEmployees" t-as="emp" t-key="emp.id">
+                                                <tr>
+                                                    <td t-esc="emp_index + 1"/>
+                                                    <td>
+                                                        <div class="employee-info">
+                                                            <div class="employee-avatar absent">
+                                                                <t t-esc="getInitials(emp.name)"/>
+                                                            </div>
+                                                            <div class="employee-name" t-esc="emp.name"/>
+                                                        </div>
+                                                    </td>
+                                                    <td t-esc="emp.department"/>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="empty-state success">
+                                    <div class="empty-icon">🎉</div>
+                                    <div class="empty-text">Barcha xodimlar kelgan!</div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </t>
+
+                <!-- Monthly Tab -->
+                <t t-if="state.activeTab === 'monthly'">
+                    <!-- Month/Year Selector -->
+                    <div class="month-selector-bar">
+                        <div class="selector-group">
+                            <label class="selector-label">📅 Oy:</label>
+                            <select class="month-select" t-on-change="onMonthChange">
+                                <t t-foreach="getMonthOptions()" t-as="m" t-key="m.value">
+                                    <option t-att-value="m.value" t-att-selected="state.selectedMonth === m.value">
+                                        <t t-esc="m.label"/>
+                                    </option>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="selector-group">
+                            <label class="selector-label">📆 Yil:</label>
+                            <select class="year-select" t-on-change="onYearChange">
+                                <t t-foreach="getYearOptions()" t-as="y" t-key="y">
+                                    <option t-att-value="y" t-att-selected="state.selectedYear === y">
+                                        <t t-esc="y"/>
+                                    </option>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="legend">
+                            <span class="legend-item work">Soat</span>
+                            <span class="legend-item rest">D - Dam</span>
+                            <span class="legend-item leave">T - Ta'til</span>
+                            <span class="legend-item holiday">U - Bayram</span>
+                            <span class="legend-item absent">- Kelmadi</span>
+                        </div>
+                        <button class="export-excel-btn" t-on-click="exportToExcel">
+                            📥 Excel
+                        </button>
+                    </div>
+
+                    <!-- Monthly Summary Table -->
+                    <div class="monthly-summary-container">
+                        <div class="table-header">
+                            <div class="table-title">📊 Oylik Hisobot - <t t-esc="state.monthlySummary.month_name"/> <t t-esc="state.monthlySummary.year"/></div>
+                        </div>
+                        <t t-if="state.monthlySummary.employees.length > 0">
+                            <div class="monthly-table-wrapper">
+                                <table class="monthly-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sticky-col">Xodim</th>
+                                            <th class="sticky-col-2">Bo'lim</th>
+                                            <t t-foreach="getDaysArray()" t-as="day" t-key="day">
+                                                <th class="day-col" t-esc="day"/>
+                                            </t>
+                                            <th class="total-col">Jami</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="state.monthlySummary.employees" t-as="emp" t-key="emp.id">
+                                            <tr>
+                                                <td class="sticky-col">
+                                                    <div class="employee-name" t-esc="emp.name"/>
+                                                </td>
+                                                <td class="sticky-col-2" t-esc="emp.department"/>
+                                                <t t-foreach="emp.days" t-as="day" t-key="day.day">
+                                                    <td t-att-class="'day-cell day-' + day.type">
+                                                        <t t-esc="day.value"/>
+                                                    </td>
+                                                </t>
+                                                <td class="total-col">
+                                                    <strong t-esc="emp.total_hours"/> s
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="empty-state">
+                                <div class="empty-icon">📅</div>
+                                <div class="empty-text">Ma'lumot topilmadi</div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </div>
+    </t>
+
+</templates>

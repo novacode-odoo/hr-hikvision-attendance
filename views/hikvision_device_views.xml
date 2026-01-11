@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hikvision_device_form" model="ir.ui.view">
+        <field name="name">hikvision.device.form</field>
+        <field name="model">hikvision.device</field>
+        <field name="arch" type="xml">
+            <form string="Hikvision Device">
+                <header>
+                    <button name="action_test_connection" string="Ulanishni Tekshirish" type="object" class="oe_highlight"/>
+                    <button name="action_fetch_logs" string="Loglarni Olish" type="object" class="oe_highlight" invisible="state != 'confirmed'"/>
+                    <button name="action_sync_users" string="Xodimlarni Yuklash" type="object" class="oe_highlight" invisible="state != 'confirmed'"/>
+                    <button name="action_sync_leave_status" string="Ta'tillarni Sinxronlash" type="object" invisible="state != 'confirmed'"/>
+                    <button name="action_get_device_users" string="Qurilma Foydalanuvchilari" type="object" invisible="state != 'confirmed'"/>
+                    <!-- Hammani Bloklash / Blokdan Chiqarish tugmalari -->
+                    <button name="action_block_all_users" string="🔒 Hammani Bloklash" type="object" class="btn-secondary" invisible="state != 'confirmed'" confirm="Barcha xodimlarni bloklashni xohlaysizmi?"/>
+                    <button name="action_unblock_all_users" string="🔓 Hammani Blokdan Chiqarish" type="object" class="btn-secondary" invisible="state != 'confirmed'" confirm="Barcha xodimlarni blokdan chiqarishni xohlaysizmi?"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Ulanish">
+                            <field name="name"/>
+                            <field name="ip_address"/>
+                            <field name="port"/>
+                        </group>
+                        <group string="Autentifikatsiya">
+                            <field name="username"/>
+                            <field name="password" password="True"/>
+                            <field name="device_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Sozlamalar">
+                            <field name="auto_sync_enabled" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hikvision_device_tree" model="ir.ui.view">
+        <field name="name">hikvision.device.tree</field>
+        <field name="model">hikvision.device</field>
+        <field name="arch" type="xml">
+            <list string="Hikvision Devices">
+                <field name="name"/>
+                <field name="ip_address"/>
+                <field name="port"/>
+                <field name="auto_sync_enabled" widget="boolean_toggle"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_hikvision_device" model="ir.actions.act_window">
+        <field name="name">Hikvision Devices</field>
+        <field name="res_model">hikvision.device</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

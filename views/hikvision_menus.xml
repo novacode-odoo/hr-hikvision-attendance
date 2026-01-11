@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_hikvision_root" name="Hikvision" web_icon="hr_attendance,static/description/icon.png" sequence="10"/>
+    
+    <menuitem id="menu_hikvision_device" name="Devices" parent="menu_hikvision_root" action="action_hikvision_device" sequence="10"/>
+    <menuitem id="menu_hikvision_log" name="Logs" parent="menu_hikvision_root" action="action_hikvision_log" sequence="20"/>
+</odoo>
