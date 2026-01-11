@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <!-- Dashboard Action -->
-    <record id="action_attendance_dashboard" model="ir.actions.client">
-        <field name="name">Davomat Dashboard</field>
-        <field name="tag">attendance_dashboard</field>
-        <field name="target">main</field>
-    </record>
-</odoo>

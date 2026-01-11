@@ -1,5 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_hikvision_device,access_hikvision_device,model_hikvision_device,hr.group_hr_manager,1,1,1,1
-access_hikvision_device_user,access_hikvision_device_user,model_hikvision_device,base.group_user,1,0,0,0
-access_hikvision_log,access_hikvision_log,model_hikvision_log,hr.group_hr_manager,1,1,1,1
-access_hikvision_log_user,access_hikvision_log_user,model_hikvision_log,base.group_user,1,0,0,0
