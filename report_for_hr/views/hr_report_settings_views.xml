@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- HR Report Settings Form View -->
+    <record id="view_hr_report_settings_form" model="ir.ui.view">
+        <field name="name">hr.report.settings.form</field>
+        <field name="model">hr.report.settings</field>
+        <field name="arch" type="xml">
+            <form string="Hisobot Sozlamalari" create="0" delete="0" duplicate="0">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Hisobot Sozlamalari</h1>
+                    </div>
+                    <group>
+                        <group string="Vaqt sozlamalari">
+                            <field name="late_grace_minutes"/>
+                            <field name="early_leave_grace_minutes"/>
+                        </group>
+                        <group string="Kompaniya">
+                            <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Ma'lumot:</strong>
+                        <ul>
+                            <li><strong>Kech kelishga ruxsat:</strong> Agar xodim shu minut ichida kech kelsa, ish vaqtidan ayrilmaydi</li>
+                            <li><strong>Erta ketishga ruxsat:</strong> Agar xodim shu minut ichida erta ketsa, ish vaqtidan ayrilmaydi</li>
+                        </ul>
+                        <p>Masalan: Ish vaqti 8:00-17:00, ruxsat 10 minut bo'lsa:</p>
+                        <ul>
+                            <li>Xodim 8:08 da kelsa → 8:00 dan ishlagan hisoblanadi</li>
+                            <li>Xodim 16:52 da ketsa → 17:00 gacha ishlagan hisoblanadi</li>
+                        </ul>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open Settings -->
+    <record id="action_hr_report_settings" model="ir.actions.act_window">
+        <field name="name">Sozlamalar</field>
+        <field name="res_model">hr.report.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'form_view_initial_mode': 'edit'}</field>
+    </record>
+
+    <!-- Server action to get or create settings -->
+    <record id="action_hr_report_settings_open" model="ir.actions.server">
+        <field name="name">Sozlamalarni ochish</field>
+        <field name="model_id" ref="model_hr_report_settings"/>
+        <field name="state">code</field>
+        <field name="code">
+settings = env['hr.report.settings'].get_settings()
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Sozlamalar',
+    'res_model': 'hr.report.settings',
+    'res_id': settings.id,
+    'view_mode': 'form',
+    'target': 'current',
+    'context': {'form_view_initial_mode': 'edit'},
+}
+        </field>
+    </record>
+
+</odoo>

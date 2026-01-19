@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Monthly Report Form View -->
+    <record id="view_hr_monthly_report_form" model="ir.ui.view">
+        <field name="name">hr.monthly.report.form</field>
+        <field name="model">hr.monthly.report</field>
+        <field name="arch" type="xml">
+            <form string="Oylik Ish Soatlari Hisoboti">
+                <group>
+                    <group>
+                        <field name="month"/>
+                        <field name="year"/>
+                    </group>
+                    <group>
+                        <field name="department_id"/>
+                    </group>
+                </group>
+                
+                <group invisible="not line_ids">
+                    <field name="line_ids" nolabel="1" readonly="1">
+                        <list string="Hisobot" create="0" delete="0">
+                            <field name="employee_id"/>
+                            <field name="department_id"/>
+                            <field name="day_1" optional="show"/>
+                            <field name="day_2" optional="show"/>
+                            <field name="day_3" optional="show"/>
+                            <field name="day_4" optional="show"/>
+                            <field name="day_5" optional="show"/>
+                            <field name="day_6" optional="show"/>
+                            <field name="day_7" optional="show"/>
+                            <field name="day_8" optional="show"/>
+                            <field name="day_9" optional="show"/>
+                            <field name="day_10" optional="show"/>
+                            <field name="day_11" optional="show"/>
+                            <field name="day_12" optional="show"/>
+                            <field name="day_13" optional="show"/>
+                            <field name="day_14" optional="show"/>
+                            <field name="day_15" optional="show"/>
+                            <field name="day_16" optional="show"/>
+                            <field name="day_17" optional="show"/>
+                            <field name="day_18" optional="show"/>
+                            <field name="day_19" optional="show"/>
+                            <field name="day_20" optional="show"/>
+                            <field name="day_21" optional="show"/>
+                            <field name="day_22" optional="show"/>
+                            <field name="day_23" optional="show"/>
+                            <field name="day_24" optional="show"/>
+                            <field name="day_25" optional="show"/>
+                            <field name="day_26" optional="show"/>
+                            <field name="day_27" optional="show"/>
+                            <field name="day_28" optional="show"/>
+                            <field name="day_29" optional="show" column_invisible="parent.days_in_month &lt; 29"/>
+                            <field name="day_30" optional="show" column_invisible="parent.days_in_month &lt; 30"/>
+                            <field name="day_31" optional="show" column_invisible="parent.days_in_month &lt; 31"/>
+                            <field name="worked_days"/>
+                            <field name="total_hours_display" string="Jami soat"/>
+                            <field name="total_overtime_display" string="Qo'shimcha ish"/>
+                        </list>
+                    </field>
+                </group>
+                
+                <footer>
+                    <button name="action_generate_report" 
+                            string="Hisobot yaratish" 
+                            type="object" 
+                            class="btn-primary"
+                            invisible="line_ids"/>
+                    <button name="action_export_excel" 
+                            string="Excel yuklab olish" 
+                            type="object" 
+                            class="btn-success"
+                            invisible="not line_ids"
+                            icon="fa-download"/>
+                    <button name="action_generate_report" 
+                            string="Qayta yaratish" 
+                            type="object" 
+                            class="btn-secondary"
+                            invisible="not line_ids"/>
+                    <button string="Yopish" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open Monthly Report -->
+    <record id="action_hr_monthly_report" model="ir.actions.act_window">
+        <field name="name">Oylik Hisobot</field>
+        <field name="res_model">hr.monthly.report</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,82 @@
+/* HR Reports Dashboard Styles - Odoo Native Compatible */
+
+/* Hide gear (cog) and cloud icons in form header */
+.o_form_view .o_cp_action_menus,
+.o_form_view .o_pager,
+.o_form_view .o_FormController .o_control_panel .o_cp_top_right .o_form_buttons_view {
+    /* Keep buttons visible but hide specific icons */
+}
+
+/* Hide the action menu (gear icon) */
+.o_hr_daily_report_form .o_cp_action_menus {
+    display: none !important;
+}
+
+/* Alternative: Hide all extra buttons in control panel for this model */
+[data-model="hr.daily.report"] .o_cp_action_menus,
+[data-res-model="hr.daily.report"] .o_cp_action_menus {
+    display: none !important;
+}
+
+.o_form_view .card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.o_form_view .card:hover {
+    transform: translateY(-2px);
+}
+
+.o_form_view .card h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.o_form_view .card span {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+/* Background colors for cards */
+.o_form_view .bg-primary {
+    background-color: #714B67 !important;
+}
+
+.o_form_view .bg-success {
+    background-color: #28a745 !important;
+}
+
+.o_form_view .bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.o_form_view .bg-warning {
+    background-color: #ffc107 !important;
+    color: #333 !important;
+}
+
+/* Text styling */
+.o_form_view .text-white {
+    color: #fff !important;
+}
+
+/* Notebook tabs styling */
+.o_form_view .o_notebook .nav-link {
+    font-weight: 500;
+}
+
+.o_form_view .o_notebook .nav-link.active {
+    color: #714B67;
+    border-bottom-color: #714B67;
+}
+
+/* Employee list in dashboard */
+.o_form_view .o_field_one2many .o_list_view {
+    min-height: 200px;
+}
+
+.o_form_view .o_field_one2many .o_list_view .o_data_row:hover {
+    background-color: rgba(113, 75, 103, 0.05);
+}

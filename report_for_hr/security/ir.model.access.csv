@@ -1,0 +1,17 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hr_daily_report_user,hr.daily.report.user,model_hr_daily_report,hr.group_hr_user,1,1,1,0
+access_hr_daily_report_manager,hr.daily.report.manager,model_hr_daily_report,hr.group_hr_manager,1,1,1,1
+access_hr_daily_report_line_user,hr.daily.report.line.user,model_hr_daily_report_line,hr.group_hr_user,1,1,1,0
+access_hr_daily_report_line_manager,hr.daily.report.line.manager,model_hr_daily_report_line,hr.group_hr_manager,1,1,1,1
+access_hr_report_analysis_user,hr.report.analysis.user,model_hr_report_analysis,hr.group_hr_user,1,1,1,1
+access_hr_report_analysis_manager,hr.report.analysis.manager,model_hr_report_analysis,hr.group_hr_manager,1,1,1,1
+access_hr_report_wizard_user,hr.report.wizard.user,model_hr_report_wizard,hr.group_hr_user,1,1,1,1
+access_hr_report_wizard_manager,hr.report.wizard.manager,model_hr_report_wizard,hr.group_hr_manager,1,1,1,1
+access_hr_attendance_wizard_user,hr.attendance.wizard.user,model_hr_attendance_wizard,hr.group_hr_user,1,1,1,1
+access_hr_attendance_wizard_manager,hr.attendance.wizard.manager,model_hr_attendance_wizard,hr.group_hr_manager,1,1,1,1
+access_hr_monthly_report_user,hr.monthly.report.user,model_hr_monthly_report,hr.group_hr_user,1,1,1,1
+access_hr_monthly_report_manager,hr.monthly.report.manager,model_hr_monthly_report,hr.group_hr_manager,1,1,1,1
+access_hr_monthly_report_line_user,hr.monthly.report.line.user,model_hr_monthly_report_line,hr.group_hr_user,1,1,1,1
+access_hr_monthly_report_line_manager,hr.monthly.report.line.manager,model_hr_monthly_report_line,hr.group_hr_manager,1,1,1,1
+access_hr_report_settings_user,hr.report.settings.user,model_hr_report_settings,hr.group_hr_user,1,0,0,0
+access_hr_report_settings_manager,hr.report.settings.manager,model_hr_report_settings,hr.group_hr_manager,1,1,1,1

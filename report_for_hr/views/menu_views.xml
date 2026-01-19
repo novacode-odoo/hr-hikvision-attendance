@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu for HR Reports App -->
+    <menuitem id="menu_hr_reports_root"
+              name="HR Hisobotlar"
+              web_icon="report_for_hr,static/description/icon.png"
+              sequence="45"/>
+
+    <!-- Dashboard Menu -->
+    <menuitem id="menu_hr_dashboard"
+              name="Dashboard"
+              parent="menu_hr_reports_root"
+              action="action_hr_daily_report_today"
+              sequence="1"/>
+
+    <!-- Reports Menu -->
+    <menuitem id="menu_hr_monthly_report"
+              name="Hisobot"
+              parent="menu_hr_reports_root"
+              action="action_hr_monthly_report"
+              sequence="10"/>
+
+    <!-- Settings Menu -->
+    <menuitem id="menu_hr_report_settings"
+              name="Sozlamalar"
+              parent="menu_hr_reports_root"
+              action="action_hr_report_settings_open"
+              sequence="99"
+              groups="base.group_system"/>
+
+</odoo>

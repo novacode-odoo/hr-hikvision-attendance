@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Report Action for HR Analysis -->
+    <record id="action_report_hr_analysis" model="ir.actions.report">
+        <field name="name">HR Analysis Report</field>
+        <field name="model">hr.report.analysis</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">report_for_hr.report_hr_analysis_document</field>
+        <field name="report_file">report_for_hr.report_hr_analysis_document</field>
+        <field name="print_report_name">'HR_Report_%s' % object.name</field>
+        <field name="binding_model_id" ref="model_hr_report_analysis"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Report Action for Wizard Direct Print -->
+    <record id="action_report_hr_wizard" model="ir.actions.report">
+        <field name="name">HR Quick Report</field>
+        <field name="model">hr.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">report_for_hr.report_hr_wizard_document</field>
+        <field name="report_file">report_for_hr.report_hr_wizard_document</field>
+    </record>
+
+    <!-- HR Analysis Report Template -->
+    <template id="report_hr_analysis_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">
+                            <span t-field="doc.name"/>
+                        </h2>
+                        
+                        <div class="row mt-4 mb-4">
+                            <div class="col-6">
+                                <strong>Report Date:</strong> <span t-field="doc.date"/><br/>
+                                <strong>Period:</strong> 
+                                <span t-field="doc.date_from"/> - <span t-field="doc.date_to"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Report Type:</strong> <span t-field="doc.report_type"/><br/>
+                                <strong>Department:</strong> 
+                                <span t-if="doc.department_id" t-field="doc.department_id.name"/>
+                                <span t-else="">All Departments</span>
+                            </div>
+                        </div>
+
+                        <h4>Summary Statistics</h4>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Total Employees</th>
+                                    <th>Total Worked Hours</th>
+                                    <th>Total Leave Days</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span t-field="doc.total_employees"/></td>
+                                    <td><span t-field="doc.total_worked_hours" t-options='{"widget": "float_time"}'/></td>
+                                    <td><span t-field="doc.total_leave_days"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <t t-if="doc.notes">
+                            <h4>Notes</h4>
+                            <p t-field="doc.notes"/>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- HR Wizard Quick Report Template -->
+    <template id="report_hr_wizard_document">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2 class="text-center">HR Quick Report</h2>
+                    
+                    <div class="row mt-4 mb-4">
+                        <div class="col-12">
+                            <strong>Period:</strong> 
+                            <span t-esc="data.get('date_from')"/> - <span t-esc="data.get('date_to')"/><br/>
+                            <strong>Report Type:</strong> <span t-esc="data.get('report_type')"/>
+                        </div>
+                    </div>
+
+                    <h4>Employee Summary</h4>
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Department</th>
+                                <th>Worked Hours</th>
+                                <th>Leave Days</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="docs.env['hr.employee'].browse(data.get('employee_ids', []))" t-as="emp">
+                                <tr>
+                                    <td><span t-esc="emp.name"/></td>
+                                    <td><span t-esc="emp.department_id.name or '-'"/></td>
+                                    <td>
+                                        <t t-set="att_summary" t-value="emp.get_attendance_summary(data.get('date_from'), data.get('date_to'))"/>
+                                        <span t-esc="'%.2f' % att_summary.get('total_hours', 0)"/>
+                                    </td>
+                                    <td>
+                                        <t t-set="leave_summary" t-value="emp.get_leave_summary(data.get('date_from'), data.get('date_to'))"/>
+                                        <span t-esc="leave_summary.get('total_days', 0)"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>
