@@ -87,8 +87,8 @@ class HrDailyReport(models.Model):
             present_employee_ids = attendances.mapped('employee_id').ids
             record.present_count = len(set(present_employee_ids))
             
-            # Absent = Total - Present (includes those on leave)
-            record.absent_count = record.total_employees - record.present_count
+            # Absent = Total - Present - On Leave
+            record.absent_count = record.total_employees - record.present_count - record.on_leave_count
 
     @api.depends('report_date')
     def _compute_employee_lists(self):
@@ -118,8 +118,8 @@ class HrDailyReport(models.Model):
             ])
             present_employee_ids = set(attendances.mapped('employee_id').ids)
             
-            # Absent = All - Present (includes those on leave)
-            absent_employee_ids = all_employee_ids - present_employee_ids
+            # Absent = All - Present - On Leave
+            absent_employee_ids = all_employee_ids - present_employee_ids - on_leave_employee_ids
             
             # Set computed fields
             record.present_employee_ids = [(6, 0, list(present_employee_ids))]
@@ -263,8 +263,8 @@ class HrDailyReport(models.Model):
         elif status == 'leave':
             return list(on_leave_employee_ids)
         elif status == 'absent':
-            # Absent = All - Present (includes those on leave)
-            absent_ids = set(all_employees.ids) - present_employee_ids
+            # Absent = All - Present - On Leave
+            absent_ids = set(all_employees.ids) - present_employee_ids - on_leave_employee_ids
             return list(absent_ids)
         return []
 
